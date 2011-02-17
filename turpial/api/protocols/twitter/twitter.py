@@ -561,3 +561,12 @@ class Twitter(Protocol):
         except TurpialException, exc:
             return Response(None, 'error', exc.msg)
             
+    def get_profile(self, args):
+        '''Obteniendo perfil'''
+        
+        user = args['user']
+        try:
+            rtn = self.http.request('%s/users/show/%s' % (self.apiurl, user))
+            return Response(self.__create_profile(rtn))
+        except TurpialException, exc:
+            return Response(None, 'error', exc.msg)

@@ -7,7 +7,7 @@
 import gtk
 import gobject
 
-class FriendsWin(gtk.Window):
+class Friends(gtk.Window):
     def __init__(self, parent, callback, friends):
         gtk.Window.__init__(self)
         

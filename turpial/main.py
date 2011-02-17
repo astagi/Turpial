@@ -26,13 +26,15 @@ try:
 except ImportError:
     pass
 
+from turpial.ui.gtk.main import Main as _GTK
 INTERFACES = ['cmd']
 try:
     from turpial.ui.gtk.main import Main as _GTK
     UI_GTK = True
     INTERFACES.append('gtk')
     INTERFACES.append('gtk+')
-except ImportError:
+except ImportError, e:
+    print e
     UI_GTK = False
 
 class Turpial:
@@ -394,7 +396,7 @@ class Turpial:
         
     def update_profile(self, new_name, new_url, new_bio, new_location):
         self.api.update_profile(new_name, new_url, new_bio, new_location,
-            self.ui.update_user_profile)
+            self.ui.update_own_profile)
     
     def in_reply_to(self, id):
         self.api.in_reply_to(id, self.ui.update_in_reply_to)
@@ -485,6 +487,9 @@ class Turpial:
             
     def is_friend(self, user):
         return self.api.is_friend(user)
+        
+    def get_user_profile(self, user):
+        self.api.get_user_profile(user, self.ui.update_user_profile)
         
 class MicroBloggingList:
     ''' Lista de los diferentes protocolos '''

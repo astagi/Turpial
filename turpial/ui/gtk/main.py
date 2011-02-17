@@ -12,15 +12,17 @@ import logging
 import gobject
 import webbrowser
 
-from turpial.ui.gtk.updatebox import UpdateBox
-from turpial.ui.gtk.uploadpicbox import UploadPicBox
-from turpial.ui.gtk.conversation import ConversationBox
+from turpial.ui.gtk.window.update import Update
+from turpial.ui.gtk.window.follow import Follow
+from turpial.ui.gtk.window.profile import Profile as UserProfile
+from turpial.ui.gtk.window.uploadpic import UploadPic
+from turpial.ui.gtk.window.preferences import Preferences
+from turpial.ui.gtk.window.conversation import Conversation
+
 from turpial.ui.gtk.login import LoginBox
-from turpial.ui.gtk.preferences import Preferences
 from turpial.ui.gtk.home import Home
 from turpial.ui.gtk.profile import Profile
 from turpial.ui.gtk.dock import Dock
-from turpial.ui.gtk.follow import Follow
 from turpial.ui.base_ui import BaseGui
 from turpial.notification import Notification
 from turpial.ui import util as util
@@ -86,9 +88,10 @@ class Main(BaseGui, gtk.Window):
         self.home = Home(self, self.workspace)
         self.profile = Profile(self)
         self.contenido = self.home
-        self.updatebox = UpdateBox(self)
-        self.uploadpic = UploadPicBox(self)
-        self.replybox = ConversationBox(self)
+        self.updatebox = Update(self)
+        self.uploadpic = UploadPic(self)
+        self.conversation = Conversation(self)
+        self.userprofile = UserProfile(self)
         
         if self.extend:
             log.debug('Cargado modo GTK Extendido')
@@ -275,8 +278,12 @@ class Main(BaseGui, gtk.Window):
         del dest
         
     def request_conversation(self, twt_id, user):
-        self.replybox.show(twt_id, user)
+        self.conversation.show(twt_id, user)
         BaseGui.request_conversation(self, twt_id, user)
+        
+    def request_user_profile(self, user):
+        self.userprofile.show(user)
+        BaseGui.request_user_profile(self, user)
         
     def get_user_avatar(self, user, pic_url):
         pix = self.request_user_avatar(user, pic_url)
@@ -476,10 +483,16 @@ class Main(BaseGui, gtk.Window):
         self.profile.favorites.update_tweets(favs)
         gtk.gdk.threads_leave()
         
-    def update_user_profile(self, profile):
-        log.debug(u'Actualizando perfil del usuario')
+    def update_own_profile(self, profile):
+        log.debug(u'Actualizando perfil propio')
         gtk.gdk.threads_enter()
         self.profile.set_user_profile(profile)
+        gtk.gdk.threads_leave()
+        
+    def update_user_profile(self, profile):
+        log.debug(u'Actualizando perfil de usuario')
+        gtk.gdk.threads_enter()
+        self.userprofile.update(profile)
         gtk.gdk.threads_leave()
         
     def update_follow(self, user, follow):
@@ -504,15 +517,16 @@ class Main(BaseGui, gtk.Window):
         self.profile.favorites.update_user_pic(user, pic)
         self.profile.user_form.update_user_pic(user, pic)
         self.profile.search.update_user_pic(user, pic)
+        self.userprofile.update_user_pic(user, pic)
         
     def update_in_reply_to(self, tweet):
         gtk.gdk.threads_enter()
-        self.replybox.update([tweet])
+        self.conversation.update([tweet])
         gtk.gdk.threads_leave()
         
     def update_conversation(self, tweets):
         gtk.gdk.threads_enter()
-        self.replybox.update(tweets)
+        self.conversation.update(tweets)
         gtk.gdk.threads_leave()
         
     def tweet_changed(self, timeline, replies, favs):

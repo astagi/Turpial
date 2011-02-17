@@ -141,9 +141,9 @@ class BaseGui:
         '''Request signout'''
         self.__controller.signout()
         
-    def request_user_profile(self):
+    def request_user_profile(self, user):
         '''Returns user profile'''
-        return self.__controller.profile
+        self.__controller.get_user_profile(user)
         
     def request_user_avatar(self, user, pic_url):
         '''Download user avatar'''
@@ -388,6 +388,9 @@ class BaseGui:
         raise NotImplementedError
         
     def update_user_avatar(self, user, avatar):
+        raise NotImplementedError
+        
+    def update_own_profile(self, profile):
         raise NotImplementedError
         
     def update_user_profile(self, profile):

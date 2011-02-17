@@ -16,9 +16,9 @@ except:
     pass
 
 from turpial.ui.gtk.waiting import CairoWaiting
-from turpial.ui.gtk.friendwin import FriendsWin
+from turpial.ui.gtk.window.friends import Friends
 
-class UploadPicBox(gtk.Window):
+class UploadPic(gtk.Window):
     def __init__(self, parent):
         gtk.Window.__init__(self)
         
@@ -166,7 +166,7 @@ class UploadPicBox(gtk.Window):
         self.mainwin.request_update_status(tweet, None)
         
     def show_friend_dialog(self, widget):
-        f = FriendsWin(self, self.add_friend, 
+        f = Friends(self, self.add_friend, 
             self.mainwin.request_friends_list())
         
     def block(self):

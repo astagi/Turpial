@@ -8,7 +8,7 @@
 import gtk
 
 from turpial.ui import util as util
-from turpial.ui.gtk.follow import Follow
+from turpial.ui.gtk.window.follow import Follow
 from turpial.config import PROTOCOLS
 from turpial.config import UPDATE_TYPE_DM, UPDATE_TYPE_STD, UPDATE_TYPE_PROFILE
 
@@ -29,6 +29,9 @@ class Menu:
             
     def __open_url(self, widget, url):
         self.mainwin.open_url(url)
+        
+    def __open_profile(self, widget, event, user):
+        self.mainwin.request_user_profile(user)
         
     def __update_box(self, widget, text, in_reply_id='', in_reply_user=''):
         self.mainwin.show_update_box(text, in_reply_id, in_reply_user)
@@ -191,7 +194,7 @@ class Menu:
             exist.append(m)
             user_prof = '/'.join([self.mainwin.request_profiles_url(), m[1:]])
             mentmenu = gtk.MenuItem(m)
-            mentmenu.connect('button-release-event', self.__open_url_with_event, user_prof)
+            mentmenu.connect('button-release-event', self.__open_profile, m[1:])
             open_menu.append(mentmenu)
             
         _open.set_submenu(open_menu)

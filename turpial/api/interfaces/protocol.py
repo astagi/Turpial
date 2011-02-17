@@ -356,6 +356,13 @@ class Protocol:
         '''
         raise NotImplementedError
         
+    def get_profile(self, user):
+        ''' 
+        Fetch an especific user profile
+        Returns: a Response object with the profile
+        '''
+        raise NotImplementedError
+        
     def update_profile(self, name, url, bio, location):
         ''' 
         Update the user profile

@@ -9,11 +9,10 @@ import gtk
 
 from turpial.ui.gtk.columns import SingleColumn
 
-class ConversationBox(gtk.Window):
+class Conversation(gtk.Window):
     def __init__(self, parent):
         gtk.Window.__init__(self)
         
-        self.working = True
         self.mainwin = parent
         self.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_DIALOG)
         self.set_title(_('In reply to...'))
@@ -42,6 +41,7 @@ class ConversationBox(gtk.Window):
         return True
         
     def show(self, twt_id, user):
+        self.working = True
         self.in_reply_id = twt_id
         self.in_reply_user = user
         self.set_title(_('In reply to %s') % user)

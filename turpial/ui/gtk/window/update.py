@@ -16,9 +16,9 @@ except:
     pass
 
 from turpial.ui.gtk.waiting import CairoWaiting
-from turpial.ui.gtk.friendwin import FriendsWin
+from turpial.ui.gtk.window.friends import Friends
 
-class UpdateBox(gtk.Window):
+class Update(gtk.Window):
     def __init__(self, parent):
         gtk.Window.__init__(self)
         
@@ -167,7 +167,7 @@ class UpdateBox(gtk.Window):
         return True
         
     def show_friend_dialog(self, widget):
-        f = FriendsWin(self, self.add_friend, 
+        f = Friends(self, self.add_friend, 
             self.mainwin.request_friends_list())
         
     def block(self):

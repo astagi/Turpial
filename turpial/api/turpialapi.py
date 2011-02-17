@@ -205,6 +205,11 @@ class TurpialAPI(threading.Thread):
             return self.protocol.get_lists()
         else:
             return self.protocol.lists
+            
+    def get_user_profile(self, user, callback):
+        '''Obteniendo perfil de usuario'''
+        self.log.debug(u'Solicitando perfil de usuario')
+        self.__register(self.protocol.get_profile, {'user': user}, callback)
     
     def quit(self):
         '''Definiendo la salida'''
