@@ -102,6 +102,8 @@ class Profile(gtk.Window):
         vbox.pack_start(bottom, False, False)
         
         self.connect('delete-event', self.__close)
+        self.web.connect('clicked', self.__open_url)
+        self.dm.connect('clicked', self.__send_dm)
         
         self.add(vbox)
         
@@ -112,6 +114,14 @@ class Profile(gtk.Window):
             self.hide()
         return True
         
+    def __open_url(self, widget):
+        user_profile = '/'.join([self.mainwin.request_profiles_url(), self.user])
+        self.mainwin.open_url(user_profile)
+        
+    def __send_dm(self, widget):
+        dm = "D @%s " % self.user
+        self.mainwin.show_update_box(dm,)
+        
     def show(self, user):
         self.showed = True
         self.working = True
@@ -121,7 +131,7 @@ class Profile(gtk.Window):
         avatar = gtk.Image()
         avatar.set_from_pixbuf(None)
         self.user_pic.set_image(avatar)
-        self.real_name.set_text('<b>%s</b>' % _('Loading...'))
+        self.real_name.set_markup('<b>%s</b>' % _('Loading...'))
         self.tweets_count.set_markup('')
         self.following_count.set_markup('')
         self.followers_count.set_markup('')

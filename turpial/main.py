@@ -206,7 +206,7 @@ class Turpial:
             self.ui.following_error(msg, follow)
         elif response.type == 'mixed':
             self.profile = response.items[0]
-            self.ui.update_user_profile(self.profile)
+            self.ui.update_own_profile(self.profile)
             self.ui.update_follow(user, follow)
         
     def __direct_done(self, status):
@@ -215,7 +215,7 @@ class Turpial:
     def __tweet_done(self, status):
         if status:
             self.profile.statuses_count += 1
-            self.ui.update_user_profile(self.profile)
+            self.ui.update_own_profile(self.profile)
         self.ui.tweet_done(status)
         
     def __signin_done(self, key, secret, resp_profile):
@@ -489,7 +489,7 @@ class Turpial:
         return self.api.is_friend(user)
         
     def get_user_profile(self, user):
-        self.api.get_user_profile(user, self.ui.update_user_profile)
+        self.api.get_user_profile(user, self.ui.update_own_profile)
         
 class MicroBloggingList:
     ''' Lista de los diferentes protocolos '''

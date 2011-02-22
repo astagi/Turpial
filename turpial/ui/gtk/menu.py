@@ -213,7 +213,7 @@ class Menu:
     def __build_profile_item(self, menu, info):
         user_profile = '/'.join([self.mainwin.request_profiles_url(), info['user']])
         usermenu = gtk.MenuItem('@' + info['user'])
-        usermenu.connect('activate', self.__open_url, user_profile)
+        usermenu.connect('activate', self.__open_profile, None, info['user'])
         menu.append(usermenu)
         return menu
         
