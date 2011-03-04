@@ -30,11 +30,11 @@ class Notification:
         self.default_icon = os.path.realpath(iconpath)
     
     def __popup(self, title, message, icon=None):
-        if self.disable:
-            log.debug('Módulo deshabilitado. No hay notificaciones')
+        if not NOTIFY
             return
         
-        if not self.active or not NOTIFY:
+        if not self.active:
+            log.debug('Módulo deshabilitado. No hay notificaciones')
             return
         
         try:
