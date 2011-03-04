@@ -327,6 +327,7 @@ class Main(BaseGui, gtk.Window):
         
     def cancel_login(self, error):
         self.vbox.cancel_login(error)
+        self.notify.login_error(error)
         
     def show_main(self, config, global_cfg, p):
         log.debug('Cargando ventana principal')
