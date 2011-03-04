@@ -489,7 +489,7 @@ class Turpial:
         return self.api.is_friend(user)
         
     def get_user_profile(self, user):
-        self.api.get_user_profile(user, self.ui.update_own_profile)
+        self.api.get_user_profile(user, self.ui.update_user_profile)
         
 class MicroBloggingList:
     ''' Lista de los diferentes protocolos '''

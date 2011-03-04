@@ -19,9 +19,9 @@ class Dock(gtk.Alignment):
         self.btn_home.set_relief(gtk.RELIEF_NONE)
         self.btn_home.set_tooltip_text(_('Timeline, replies and others'))
         
-        #self.btn_profile = gtk.Button()
-        #self.btn_profile.set_relief(gtk.RELIEF_NONE)
-        #self.btn_profile.set_tooltip_text(_('Profile, favorites, search'))
+        self.btn_profile = gtk.Button()
+        self.btn_profile.set_relief(gtk.RELIEF_NONE)
+        self.btn_profile.set_tooltip_text(_('Profile, favorites, search'))
         
         self.btn_follow = gtk.Button()
         self.btn_follow.set_relief(gtk.RELIEF_NONE)
@@ -47,13 +47,13 @@ class Dock(gtk.Alignment):
         self.btn_follow.connect('clicked', self.show_follow)
         self.btn_update.connect('clicked', self.show_update)
         self.btn_upload.connect('clicked', self.show_upload)
-        #self.btn_profile.connect('clicked', self.mainwin.show_profile)
+        self.btn_profile.connect('clicked', self.mainwin.show_profile)
         self.btn_settings.connect('clicked', self.mainwin.show_preferences)
         self.btn_about.connect('clicked', self.__show_about)
         
         box = gtk.HBox()
         box.pack_start(self.btn_home, False, False)
-        #box.pack_start(self.btn_profile, False, False)
+        box.pack_start(self.btn_profile, False, False)
         box.pack_start(self.btn_follow, False, False)
         box.pack_start(self.btn_update, False, False)
         box.pack_start(self.btn_upload, False, False)
@@ -81,7 +81,7 @@ class Dock(gtk.Alignment):
         self.btn_update.set_image(self.mainwin.load_image('dock-update.png'))
         self.btn_follow.set_image(self.mainwin.load_image('dock-follow.png'))
         self.btn_upload.set_image(self.mainwin.load_image('dock-uploadpic.png'))
-        #self.btn_profile.set_image(self.mainwin.load_image('dock-profile.png'))
+        self.btn_profile.set_image(self.mainwin.load_image('dock-profile.png'))
         self.btn_settings.set_image(self.mainwin.load_image('dock-settings.png'))
         self.btn_about.set_image(self.mainwin.load_image('dock-about.png'))
         return
