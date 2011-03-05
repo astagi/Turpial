@@ -30,7 +30,7 @@ class Notification:
         self.default_icon = os.path.realpath(iconpath)
     
     def __popup(self, title, message, icon=None):
-        if not NOTIFY
+        if not NOTIFY:
             return
         
         if not self.active:
