@@ -5,6 +5,9 @@
 # Author: Wil Alvarez (aka Satanas)
 # May 25, 2010
 
+import os
+import tempfile
+
 from turpial.api.interfaces.protocol import Protocol
 from turpial.api.interfaces.http import TurpialException
 from turpial.api.protocols.twitter.http import TwitterHTTP
@@ -567,6 +570,16 @@ class Twitter(Protocol):
         user = args['user']
         try:
             rtn = self.http.request('%s/users/show/%s' % (self.apiurl, user))
-            return Response(self.__create_profile(rtn))
+            profile = self.__create_profile(rtn)
+            rtn = self.http.request('%s/statuses/user_timeline' % 
+                self.apiurl, {'screen_name': user})
+            profile.recent_updates = Response(self.response_to_statuses(rtn))
+            rtn = self.http.request(profile.avatar, {}, 'text')
+            fid, path = tempfile.mkstemp(prefix='tmp_avatar')
+            fd = os.fdopen(fid, 'wb')
+            fd.write(rtn)
+            fd.close()
+            profile.tmp_avatar_path = path
+            return Response(profile)
         except TurpialException, exc:
             return Response(None, 'error', exc.msg)

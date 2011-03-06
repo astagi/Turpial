@@ -65,9 +65,9 @@ class TwitterHTTP(TurpialHTTP):
             self.log.debug("Auth error: %s" % (traceback.print_exc()))
             raise TurpialException(_('Authentication Error'))
         
-    def request(self, uri, args={}):
+    def request(self, uri, args={}, format=None):
         try:
-            rtn = self.do_request(uri, args)
+            rtn = self.do_request(uri, args, format)
             return rtn
         except urllib2.HTTPError, exc:
             self.log.debug("HTTPError for URL: %s\nparameters: (%s)\n\

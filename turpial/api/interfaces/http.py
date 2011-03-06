@@ -123,13 +123,13 @@ class TurpialHTTP:
             method, strReq, uri, args)
         return req
     
-    def __send(self, httpreq):
+    def __send(self, httpreq, format):
         req = urllib2.Request(httpreq.strReq, httpreq.argData, httpreq.headers)
         handle = urllib2.urlopen(req)
-        if self.format == 'json':
-            return json.loads(handle.read())
-        else:
+        if format:
             return handle.read()
+        elif self.format == 'json':
+            return json.loads(handle.read())
         
     def _basic_auth(self, httpreq):
         if self.username:
@@ -146,14 +146,14 @@ class TurpialHTTP:
         self.username = username
         self.password = password
         
-    def do_request(self, url, args={}):
+    def do_request(self, url, args={}, format=None):
         ''' Realizado una petición HTTP'''
         # Construir la petición
         httpreq = self.__build(url, args)
         # Autenticarla si es necesario
         authreq = self.apply_auth(httpreq)
         # Enviarla y obtener la respuesta
-        response = self.__send(authreq)
+        response = self.__send(authreq, format)
         return response
         
     def change_format(self, value):
