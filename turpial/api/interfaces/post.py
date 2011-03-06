@@ -34,9 +34,9 @@ class Profile:
         self.fullname = None
         self.username = None
         self.avatar = None
-        self.location = None
-        self.url = None
-        self.bio = None
+        self.location = ''
+        self.url = ''
+        self.bio = ''
         self.following = None
         self.followers_count = None
         self.friends_count = None
@@ -45,6 +45,8 @@ class Profile:
         self.statuses_count = None
         self.last_update = None
         self.last_update_id = None
+        self.recent_updates = []
+        self.tmp_avatar_path = None
 
 class List:
     def __init__(self):
