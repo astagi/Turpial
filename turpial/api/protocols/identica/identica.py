@@ -13,7 +13,7 @@ from turpial.config import PROTOCOLS
 from turpial.config import UPDATE_TYPE_DM, UPDATE_TYPE_STD, UPDATE_TYPE_PROFILE
 
 
-class Identica(Protocol):
+class Main(Protocol):
     def __init__(self):
         Protocol.__init__(self, 'Identi.ca', 'http://identi.ca/api', 
             'http://identi.ca/api', 'http://identi.ca/tag/', 
@@ -153,13 +153,9 @@ class Identica(Protocol):
             profiles.append(self.__create_profile(pf))
         return profiles
             
-    def auth(self, args):
+    def auth(self, username, password):
         ''' Inicio de autenticacion segura '''
         self.log.debug('Iniciando autenticacion segura')
-        username = args['username']
-        password = args['password']
-        auth = args['auth']
-        protocol = args['protocol']
         
         try:
             self.http.auth(username, password, None)
@@ -168,7 +164,7 @@ class Identica(Protocol):
             self.profile = self.__create_profile(rtn)
             self.profile.password = password
             
-            return Response(self.profile, 'profile'), None, None, protocol
+            return Response(self.profile, 'profile'), None, None
         except TurpialException, exc:
             return Response(None, 'error', exc.msg), None, None, None
         except Exception, exc:

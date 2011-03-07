@@ -15,7 +15,7 @@ from turpial.api.interfaces.post import Status, Response, Profile, List, RateLim
 from turpial.config import PROTOCOLS
 from turpial.config import UPDATE_TYPE_DM, UPDATE_TYPE_STD, UPDATE_TYPE_PROFILE
 
-class Twitter(Protocol):
+class Main(Protocol):
     def __init__(self):
         Protocol.__init__(self, 'Twitter', 'http://api.twitter.com/1', 
             'http://search.twitter.com', 'http://twitter.com/search?q=%23',
@@ -177,13 +177,9 @@ class Twitter(Protocol):
             profiles.append(self.__create_profile(pf))
         return profiles
             
-    def auth(self, args):
+    def auth(self, username, password):
         ''' Inicio de autenticacion segura '''
         self.log.debug('Iniciando autenticacion segura')
-        username = args['username']
-        password = args['password']
-        auth = args['auth']
-        protocol = args['protocol']
         
         try:
             key, secret = self.http.auth(username, password)
@@ -192,7 +188,7 @@ class Twitter(Protocol):
             self.profile = self.__create_profile(rtn)
             self.profile.password = password
             #return Response([self.profile, key, secret], 'mixed')
-            return Response(self.profile, 'profile'), key, secret, protocol
+            return Response(self.profile, 'profile'), key, secret
         except TurpialException, exc:
             return Response(None, 'error', exc.msg), None, None, None
         except Exception, exc:
