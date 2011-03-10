@@ -23,10 +23,23 @@ class Status:
         self.is_own = False
 
 class Response:
-    def __init__(self, items=[], type='status', errmsg=''):
+    def __init__(self, items=[]):
         self.items = items
-        self.type = type #status/profile/rate/error/mixed
-        self.errmsg = errmsg
+    
+    def __len__(self):
+        len(self.items)
+        
+class ErrorResponse:
+    def __init__(self, message):
+        self.errmsg = message
+        
+class StatusResponse(Response):
+    def __init__(self, statuses):
+        Response.__init__(statuses)
+        
+class ProfileResponse(Response):
+    def __init__(self, profiles):
+        Response.__init__(profiles)
         
 class Account:
     def __init__(self):

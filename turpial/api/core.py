@@ -9,12 +9,12 @@ import Queue
 import logging
 import traceback
 
+from turpial.config import PROTOCOLS
+from turpial.api.interfaces.post import Response
 from turpial.api.protocols.twitter import twitter
 from turpial.api.protocols.identica import identica
-from turpial.api.interfaces.post import Response
-from turpial.config import PROTOCOLS
-
-from turpial.api.models import Account
+from turpial.api.interfaces.http import TurpialException
+from turpial.api.models import Account, ProfileResponse, ErrorResponse
 
 PROTOCOLS = {
     'twitter': twitter.Main(),
@@ -45,12 +45,9 @@ class Core:
             self.log.debug('Authenticating %s' % acc)
             try:
                 rtn = PROTOCOLS[acc.protocol].auth(acc.username, acc.password)
+                return ProfileResponse(rtn)
             except TurpialException, exc:
-                
+                return ErrorResponse(exc.msg)
             except Exception, exc:
-                
-            print rtn
-            
-    
-    
-        
+                print traceback.traceback
+                return ErrorResponse('Authentication Error')
