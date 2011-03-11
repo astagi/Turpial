@@ -24,7 +24,10 @@ class Status:
 
 class Response:
     def __init__(self, items=None):
-        self.items = items
+        if not items:
+            self.items = []
+        else:
+            self.items = items
     
     def __len__(self):
         len(self.items)

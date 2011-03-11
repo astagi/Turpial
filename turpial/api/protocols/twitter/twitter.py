@@ -178,8 +178,8 @@ class Main(Protocol):
         return profiles
             
     def auth(self, username, password):
-        ''' Inicio de autenticacion segura '''
-        self.log.debug('Iniciando autenticacion segura')
+        ''' Starting OAuth '''
+        self.log.debug('Starting OAuth')
         
         key, secret = self.http.auth(username, password)
         rtn = self.http.request('%s/account/verify_credentials' % self.apiurl)
@@ -189,60 +189,37 @@ class Main(Protocol):
         self.profile.secret = secret
         return self.profile
         
-    def get_timeline(self, args):
-        '''Actualizando linea de tiempo'''
-        self.log.debug('Descargando timeline')
-        count = args['count']
+    def get_timeline(self, count):
+        ''' Updating timeline '''
+        self.log.debug('Updating timeline')
+        rtn = self.http.request('%s/statuses/home_timeline' % 
+            self.apiurl, {'count': count})
+        return self.response_to_statuses(rtn)
         
-        try:
-            rtn = self.http.request('%s/statuses/home_timeline' % 
-                self.apiurl, {'count': count})
-            self.timeline = self.response_to_statuses(rtn)
-            return Response(self.get_muted_timeline(self.timeline), 'status')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
+    def get_replies(self, count):
+        ''' Updating replies '''
+        self.log.debug('Updating replies')
+        rtn = self.http.request('%s/statuses/mentions' % 
+            self.apiurl, {'count': count})
+        return self.response_to_statuses(rtn)
         
-    def get_replies(self, args):
-        '''Actualizando menciones'''
-        self.log.debug('Descargando menciones')
-        count = args['count']
-        
-        try:
-            rtn = self.http.request('%s/statuses/mentions' % 
-                self.apiurl, {'count': count})
-            self.replies = self.response_to_statuses(rtn)
-            return Response(self.replies, 'status')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
-        
-    def get_directs(self, args):
-        '''Actualizando mensajes directos'''
-        self.log.debug('Descargando directos')
-        count = args['count']
-        
-        try:
-            rtn = self.http.request('%s/direct_messages' % self.apiurl, 
-                {'count': count})
-            self.directs = self.response_to_statuses(rtn, type=UPDATE_TYPE_DM)
-            rtn = self.http.request('%s/direct_messages/sent' % self.apiurl, 
-                {'count': count})
-            self.directs += self.response_to_statuses(rtn, type=UPDATE_TYPE_DM)
-            return Response(self.directs, 'status')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
+    def get_directs(self, count):
+        ''' Updating directs '''
+        self.log.debug('Updating directs')
+        rtn = self.http.request('%s/direct_messages' % self.apiurl, 
+            {'count': count / 2})
+        directs = self.response_to_statuses(rtn, type=UPDATE_TYPE_DM)
+        rtn = self.http.request('%s/direct_messages/sent' % self.apiurl, 
+            {'count': count / 2})
+        directs += self.response_to_statuses(rtn, type=UPDATE_TYPE_DM)
+        return directs
             
-    def get_sent(self, args):
-        '''Actualizando mensajes enviados'''
-        self.log.debug('Descargando mis tweets')
-        count = args['count']
-        
-        try:
-            rtn = self.http.request('%s/statuses/user_timeline' % self.apiurl, 
-                {'count': count})
-            self.directs = self.response_to_statuses(rtn)
-            return Response(self.directs, 'status')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
+    def get_sent(self, count):
+        ''' Updating my statuses '''
+        self.log.debug('Updating my statuses')
+        rtn = self.http.request('%s/statuses/user_timeline' % self.apiurl, 
+            {'count': count})
+        return self.response_to_statuses(rtn)
         
     def get_favorites(self):
         '''Actualizando favoritos'''
