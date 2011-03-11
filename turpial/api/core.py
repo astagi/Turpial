@@ -46,9 +46,9 @@ class Core:
             try:
                 rtn = PROTOCOLS[acc.protocol].auth(acc.username, acc.password)
             except TurpialException, exc:
-                
+                print exc.msg
             except Exception, exc:
-                
+                exc.msg
             print rtn
             
     

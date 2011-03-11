@@ -5,6 +5,14 @@
 # Author: Wil Alvarez (aka Satanas)
 # May 20, 2010
 
+'''
+'turpial.api.models.Response'
+>>> str(r.__class__).split('.')[-1]
+'Response'
+
+isinstance(r, Response)
+'''
+
 class Status:
     def __init__(self):
         self.id = None

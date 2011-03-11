@@ -181,19 +181,19 @@ class Main(Protocol):
         ''' Inicio de autenticacion segura '''
         self.log.debug('Iniciando autenticacion segura')
         
-        try:
-            key, secret = self.http.auth(username, password)
-            rtn = self.http.request('%s/account/verify_credentials' % 
-                self.apiurl)
-            self.profile = self.__create_profile(rtn)
-            self.profile.password = password
-            #return Response([self.profile, key, secret], 'mixed')
-            return Response(self.profile, 'profile'), key, secret
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg), None, None, None
-        except Exception, exc:
-            self.log.debug('Authentication Error: %s' % exc)
-            return Response(None, 'error', _('Authentication Error')), None, None, None
+        #try:
+        key, secret = self.http.auth(username, password)
+        rtn = self.http.request('%s/account/verify_credentials' % 
+            self.apiurl)
+        self.profile = self.__create_profile(rtn)
+        self.profile.password = password
+        #return Response([self.profile, key, secret], 'mixed')
+        return Response(self.profile, 'profile'), key, secret
+        #except TurpialException, exc:
+        #    return Response(None, 'error', exc.msg), None, None, None
+        #except Exception, exc:
+        #    self.log.debug('Authentication Error: %s' % exc)
+        #    return Response(None, 'error', _('Authentication Error')), None, None, None
         
     def get_timeline(self, args):
         '''Actualizando linea de tiempo'''
