@@ -23,23 +23,26 @@ class Status:
         self.is_own = False
 
 class Response:
-    def __init__(self, items=[]):
+    def __init__(self, items=None):
         self.items = items
     
     def __len__(self):
         len(self.items)
+    
+    def add(self, item):
+        self.items.append(item)
         
 class ErrorResponse:
     def __init__(self, message):
         self.errmsg = message
         
 class StatusResponse(Response):
-    def __init__(self, statuses):
-        Response.__init__(statuses)
+    def __init__(self, statuses=None):
+        Response.__init__(self, statuses)
         
 class ProfileResponse(Response):
-    def __init__(self, profiles):
-        Response.__init__(profiles)
+    def __init__(self, profiles=None):
+        Response.__init__(self, profiles)
         
 class Account:
     def __init__(self):
@@ -61,6 +64,8 @@ class Account:
         self.recent_updates = []
         self.tmp_avatar_path = None
         self.protocol = None
+        self.key = None
+        self.secret = None
 
 class List:
     def __init__(self):

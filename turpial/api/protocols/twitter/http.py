@@ -61,6 +61,7 @@ class TwitterHTTP(TurpialHTTP):
             self.token = self.__fetch_xauth_access_token(username, password)
             
             return (self.token.key, self.token.secret)
+        #TODO: Mejorar la detección de excepciones
         except Exception, exc:
             self.log.debug("Auth error: %s" % (traceback.print_exc()))
             raise TurpialException(_('Authentication Error'))

@@ -5,8 +5,10 @@
 # Author: Wil Alvarez (aka Satanas)
 # Mar 06, 2011
 
+import os
 import Queue
 import logging
+import gettext
 import traceback
 
 from turpial.config import PROTOCOLS
@@ -30,6 +32,16 @@ class Core:
         self.log.debug('Started')
         self.accounts = {}
         
+        # Initialize gettext
+        gettext_domain = 'turpial'
+        # Definicion de localedir en modo desarrollo
+        if os.path.isdir(os.path.join(os.path.dirname(__file__), '..', 'i18n')):
+            localedir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'i18n'))
+            trans = gettext.install(gettext_domain, localedir)
+            self.log.debug('Locale Dir %s' % localedir)
+        else:
+            trans = gettext.install(gettext_domain)
+        
     def register_account(self, username, password, protocol, remember):
         self.log.debug('Registering account %s' % username)
         aid = "%s-%s" % (username, protocol)
@@ -41,13 +53,15 @@ class Core:
         self.accounts[aid] = account
         
     def login(self):
+        response = ProfileResponse()
         for aid, acc in self.accounts.iteritems():
             self.log.debug('Authenticating %s' % acc)
             try:
                 rtn = PROTOCOLS[acc.protocol].auth(acc.username, acc.password)
-                return ProfileResponse(rtn)
+                response.add(rtn)
             except TurpialException, exc:
                 return ErrorResponse(exc.msg)
             except Exception, exc:
-                print traceback.traceback
-                return ErrorResponse('Authentication Error')
+                print traceback.print_exc()
+                return ErrorResponse(_('Authentication Error'))
+        return response
