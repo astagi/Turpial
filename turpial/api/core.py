@@ -60,7 +60,7 @@ class Core:
                 rtn = PROTOCOLS[acc.protocol].auth(acc.username, acc.password)
                 response.add(rtn)
             except TurpialException, exc:
-                self.log.debug('Error: %s' % exc.msg)
+                self.log.debug('%s' % exc.msg)
                 return ErrorResponse(exc.msg)
             except Exception, exc:
                 print traceback.print_exc()
