@@ -59,14 +59,17 @@ class TwitterHTTP(TurpialHTTP):
         
         try:
             self.token = self.__fetch_xauth_access_token(username, password)
-            
             return (self.token.key, self.token.secret)
-        #TODO: Mejorar la detección de excepciones
-        except Exception, exc:
+        #TODO: Improve the exception detection
+        except urllib2.HTTPError, exc:
+            if (exc.code == 401):
+                raise TurpialException(_('Invalid credentials'))
+        except Exception:
             self.log.debug("Auth error: %s" % (traceback.print_exc()))
             raise TurpialException(_('Authentication Error'))
         
     def request(self, uri, args={}, format=None):
+        #TODO: Unificate all exceptions in one code block
         try:
             rtn = self.do_request(uri, args, format)
             return rtn
