@@ -9,7 +9,7 @@ import os
 import urllib2
 import tempfile
 
-from turpial.config import UpdateType
+from turpial.config import UpdateType, STATUSPP
 from turpial.api.models.status import Status
 from turpial.api.models.profile import Profile
 from turpial.api.protocols.twitter import oauth
@@ -149,7 +149,7 @@ class Main(Protocol):
             return status
         
     def auth(self, username, password):
-        ''' Starting OAuth '''
+        ''' Start OAuth '''
         self.log.debug('Starting OAuth')
         
         self.__fetch_xauth_access_token(username, password)
@@ -158,9 +158,41 @@ class Main(Protocol):
         self.username = profile.username
         return profile
         
-    def get_timeline(self, count):
-        ''' Updating timeline '''
+    def get_timeline(self, count=STATUSPP):
         self.log.debug('Updating timeline')
         rtn = self.request('/statuses/home_timeline', {'count': count})
+        return self.json_to_status(rtn)
+        
+    def get_replies(self, count=STATUSPP):
+        self.log.debug('Updating replies')
+        rtn = self.request('/statuses/mentions', {'count': count})
+        return self.json_to_status(rtn)
+        
+    def get_directs(self, count=STATUSPP):
+        self.log.debug('Updating directs')
+        rtn = self.request('/direct_messages', {'count': count / 2})
+        directs = self.json_to_status(rtn, _type=UpdateType.DM)
+        rtn2 = self.request('/direct_messages/sent', {'count': count / 2})
+        directs += self.json_to_status(rtn2, _type=UpdateType.DM)
+        return directs
+            
+    def get_sent(self, count=STATUSPP):
+        self.log.debug('Updating my statuses')
+        rtn = self.request('/statuses/user_timeline', {'count': count})
+        return self.json_to_status(rtn)
+        
+    def get_favorites(self):
+        self.log.debug('Updating favorites')
+        rtn = self.request('/favorites')
+        return self.json_to_status(rtn)
+        
+    def update_status(self, text, in_reply_id=None):
+        self.log.debug(u'Updating status: %s' % text)
+        if in_reply_id:
+            args = {'status': text, 'in_reply_to_status_id': in_reply_id}
+        else:
+            args = {'status': text}
+        
+        rtn = self.request('/statuses/update', args)
         return self.json_to_status(rtn)
         

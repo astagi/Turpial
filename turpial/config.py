@@ -15,6 +15,7 @@ try:
 except:
     XDG_CACHE = False
 
+STATUSPP = 20
 PROTOCOLS = ['twitter', 'identica']
 
 # Tipos de actualizaciones (tweets/dents)
