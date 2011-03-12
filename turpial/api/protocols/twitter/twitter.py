@@ -6,547 +6,161 @@
 # May 25, 2010
 
 import os
+import urllib2
 import tempfile
 
+from turpial.config import UpdateType
+from turpial.api.models.status import Status
+from turpial.api.models.profile import Profile
+from turpial.api.protocols.twitter import oauth
 from turpial.api.interfaces.protocol import Protocol
-from turpial.api.interfaces.http import TurpialException
-from turpial.api.protocols.twitter.http import TwitterHTTP
-from turpial.api.interfaces.post import Status, Response, Profile, List, RateLimit
-from turpial.config import PROTOCOLS
-from turpial.config import UPDATE_TYPE_DM, UPDATE_TYPE_STD, UPDATE_TYPE_PROFILE
+from turpial.api.protocols.twitter.globals import CONSUMER_KEY, CONSUMER_SECRET
 
 class Main(Protocol):
-    def __init__(self):
-        Protocol.__init__(self, 'Twitter', 'http://api.twitter.com/1', 
-            'http://search.twitter.com', 'http://twitter.com/search?q=%23',
-            None, 'http://www.twitter.com')
+    def __init__(self, account_id):
+        Protocol.__init__(self, account_id, 'Twitter', 
+            'http://api.twitter.com/1', 'http://search.twitter.com', 
+            'http://twitter.com/search?q=%23', None, 'http://www.twitter.com')
         
-        self.http = TwitterHTTP()
-        self.retweet_by_me = []
-        self.oauth_support = False
+        self.username = None
+        self.token = None
+        self.account_id = account_id
+        self.auth_args = {}
+        self.access_url = 'https://api.twitter.com/oauth/access_token'
         
-    def __get_real_tweet(self, tweet):
-        '''Get the tweet retweeted'''
-        retweet_by = None
-        real_timestamp = None
-        if tweet.has_key('retweeted_status'):
-            retweet_by = tweet['user']['screen_name']
-            real_timestamp = tweet['created_at']
-            tweet = tweet['retweeted_status']
-            
-        return tweet, retweet_by, real_timestamp
+        self.consumer = oauth.OAuthConsumer(CONSUMER_KEY, CONSUMER_SECRET)
+        self.sign_method_hmac_sha1 = oauth.OAuthSignatureMethod_HMAC_SHA1()
         
-    def __print_you(self, username):
-        ''' Print "you" if username is the name of the user'''
-        if username == self.profile.username:
-            return 'you'
+    def __fetch_xauth_access_token(self, username, password):
+        request = oauth.OAuthRequest.from_consumer_and_token(
+            oauth_consumer=self.consumer,
+            http_method='POST', http_url=self.access_url,
+            parameters = {
+                'x_auth_mode': 'client_auth',
+                'x_auth_username': username,
+                'x_auth_password': password
+            }
+        )
+        request.sign_request(self.sign_method_hmac_sha1, self.consumer, None)
+
+        req = urllib2.Request(self.access_url, data=request.to_postdata())
+        response = urllib2.urlopen(req)
+        self.token = oauth.OAuthToken.from_string(response.read())
+        self.auth_args['key'] = self.token.key
+        self.auth_args['secret'] = self.token.secret
+        
+    def auth_http_request(self, httpreq, args):
+        request = oauth.OAuthRequest.from_consumer_and_token(self.consumer,
+            token=self.token, http_method=httpreq.method, http_url=httpreq.uri,
+            parameters=httpreq.params)
+        request.sign_request(self.sign_method_hmac_sha1,
+            self.consumer, self.token)
+        httpreq.headers.update(request.to_header())
+        return httpreq
+        
+    def json_to_profile(self, response):
+        if isinstance(response, list):
+            profiles = []
+            for pf in response:
+                profile = self.json_to_status(json_to_profile)
+                profiles.append(profile)
+            return profiles
         else:
-            return username
+            profile = Profile()
+            profile._id = response['id']
+            profile.fullname = response['name']
+            profile.username = response['screen_name']
+            profile.avatar = response['profile_image_url']
+            profile.location = response['location']
+            profile.url = response['url']
+            profile.bio = response['description']
+            profile.following = response['following']
+            profile.followers_count = response['followers_count']
+            profile.friends_count = response['friends_count']
+            profile.statuses_count = response['statuses_count']
+            if response.has_key('status'):
+                profile.last_update = response['status']['text']
+                profile.last_update_id = response['status']['id']
+            profile.link_color = ('#' + response['profile_link_color']) or Profile.DEFAULT_LINK_COLOR
+            return profile
     
-    def __create_status(self, resp, type=UPDATE_TYPE_STD):
-        tweet, retweet_by, real_timestamp = self.__get_real_tweet(resp)
-        
-        if tweet.has_key('user'):
-            username = tweet['user']['screen_name']
-            avatar = tweet['user']['profile_image_url']
-        elif tweet.has_key('sender'):
-            username = tweet['sender']['screen_name']
-            avatar = tweet['sender']['profile_image_url']
-        elif tweet.has_key('from_user'):
-            username = tweet['from_user']
-            avatar = tweet['profile_image_url']
-        
-        in_reply_to_id = None
-        in_reply_to_user = None
-        if tweet.has_key('in_reply_to_status_id') and \
-           tweet['in_reply_to_status_id']:
-            in_reply_to_id = tweet['in_reply_to_status_id']
-            in_reply_to_user = tweet['in_reply_to_screen_name']
-            
-        fav = False
-        if tweet.has_key('favorited'):
-            fav = tweet['favorited']
-        source = None
-        if tweet.has_key('source'):
-            source = tweet['source']
-        
-        if username.lower() == self.profile.username.lower():
-            own = True
+    def json_to_status(self, response, _type=UpdateType.STD):
+        if isinstance(response, list):
+            statuses = []
+            for resp in response:
+                if not resp:
+                    continue
+                status = self.json_to_status(resp, _type)
+                #if status.retweet_by:
+                #    users = self.__get_retweet_users(status._id)
+                #    status.retweet_by = users
+                statuses.append(status)
+            return statuses
         else:
-            own = False
-            
-        if not real_timestamp:
-            real_timestamp = tweet['created_at']
-        
-        status = Status()
-        status.id = str(tweet['id'])
-        status.username = username
-        status.avatar = avatar
-        status.source = source
-        status.text = tweet['text']
-        status.in_reply_to_id = in_reply_to_id
-        status.in_reply_to_user = in_reply_to_user
-        status.is_favorite = fav
-        status.retweet_by = retweet_by
-        status.datetime = self.get_str_time(tweet['created_at'])
-        status.timestamp = self.get_int_time(real_timestamp)
-        status.type = type
-        status.protocol = PROTOCOLS[0]
-        status.is_own = own
-        return status
-        
-    def __create_profile(self, pf):
-        profile = Profile()
-        profile.id = pf['id']
-        profile.fullname = pf['name']
-        profile.username = pf['screen_name']
-        profile.avatar = pf['profile_image_url']
-        profile.location = pf['location']
-        profile.url = pf['url']
-        profile.bio = pf['description']
-        profile.following = pf['following']
-        profile.followers_count = pf['followers_count']
-        profile.friends_count = pf['friends_count']
-        profile.statuses_count = pf['statuses_count']
-        if pf.has_key('status'):
-            profile.last_update = pf['status']['text']
-            profile.last_update_id = pf['status']['id']
-        profile.profile_link_color = ('#%s' % pf['profile_link_color']) or '#0F0F85'
-        return profile
-        
-    def __create_list(self, ls):
-        _list = List()
-        _list.id = ls['id']
-        _list.slug = ls['slug']
-        _list.name = ls['name']
-        _list.mode = ls['mode']
-        _list.user = ls['user']['screen_name']
-        _list.member_count = ls['member_count']
-        _list.description = ls['description']
-        return _list
-        
-    def __create_rate(self, rl):
-        rate = RateLimit()
-        rate.hourly_limit = rl['hourly_limit']
-        rate.remaining_hits = rl['remaining_hits']
-        rate.reset_time = rl['reset_time']
-        rate.reset_time_in_seconds = rl['reset_time_in_seconds']
-        return rate
-        
-    def __get_retweet_users(self, id):
-        users = ''
-        try:
-            rts = self.http.request('%s/statuses/%s/retweeted_by' % 
-                (self.apiurl, id))
-            
-            results = self.response_to_profiles(rts)
-            if len(results) == 1:
-                users = self.__print_you(results[0].username)
+            retweet_by = None
+            if response.has_key('retweeted_status'):
+                retweet_by = response['user']['screen_name']
+                tweet = response['retweeted_status']
             else:
-                length = len(results)
-                limit = 2 if length > 3 else length - 1
-                
-                for index in range(limit):
-                    users += self.__print_you(results[index].username) + ', '
-                
-                if length > 3:
-                    tail = ' and %i others' % (length - limit)
-                else:
-                    tail = ' and %s' % self.__print_you(results[limit].username)
-                users = users[:-2] + tail
-        except Exception, exc:
-            print exc
-        
-        return users
-        
-    def response_to_statuses(self, response, mute=False, type=UPDATE_TYPE_STD):
-        statuses = []
-        for resp in response:
-            if not resp:
-                continue
-            status = self.__create_status(resp, type)
-            if status.retweet_by and self.oauth_support:
-                users = self.__get_retweet_users(status.id)
-                status.retweet_by = users
-            statuses.append(status)
-        return statuses
-        
-    def response_to_profiles(self, response):
-        profiles = []
-        for pf in response:
-            profiles.append(self.__create_profile(pf))
-        return profiles
+                tweet = response
             
+            if tweet.has_key('user'):
+                username = tweet['user']['screen_name']
+                avatar = tweet['user']['profile_image_url']
+            elif tweet.has_key('sender'):
+                username = tweet['sender']['screen_name']
+                avatar = tweet['sender']['profile_image_url']
+            elif tweet.has_key('from_user'):
+                username = tweet['from_user']
+                avatar = tweet['profile_image_url']
+            
+            in_reply_to_id = None
+            in_reply_to_user = None
+            if tweet.has_key('in_reply_to_status_id') and \
+               tweet['in_reply_to_status_id']:
+                in_reply_to_id = tweet['in_reply_to_status_id']
+                in_reply_to_user = tweet['in_reply_to_screen_name']
+                
+            fav = False
+            if tweet.has_key('favorited'):
+                fav = tweet['favorited']
+            
+            source = None
+            if tweet.has_key('source'):
+                source = tweet['source']
+            
+            own = True if (username.lower() == self.username.lower()) else False
+            
+            status = Status()
+            status._id = str(tweet['id'])
+            status.username = username
+            status.avatar = avatar
+            status.source = source
+            status.text = tweet['text']
+            status.in_reply_to_id = in_reply_to_id
+            status.in_reply_to_user = in_reply_to_user
+            status.is_favorite = fav
+            status.reposted_by = retweet_by
+            status.datetime = self.get_str_time(tweet['created_at'])
+            status.timestamp = self.get_int_time(tweet['created_at'])
+            status._type = _type
+            status.account_id = self.account_id
+            status.is_own = own
+            return status
+        
     def auth(self, username, password):
         ''' Starting OAuth '''
         self.log.debug('Starting OAuth')
         
-        key, secret = self.http.auth(username, password)
-        rtn = self.http.request('%s/account/verify_credentials' % self.apiurl)
-        self.profile = self.__create_profile(rtn)
-        self.profile.password = password
-        self.profile.key = key
-        self.profile.secret = secret
-        return self.profile
+        self.__fetch_xauth_access_token(username, password)
+        rtn = self.request('/account/verify_credentials')
+        profile = self.json_to_profile(rtn)
+        self.username = profile.username
+        return profile
         
     def get_timeline(self, count):
         ''' Updating timeline '''
         self.log.debug('Updating timeline')
-        rtn = self.http.request('%s/statuses/home_timeline' % 
-            self.apiurl, {'count': count})
-        return self.response_to_statuses(rtn)
+        rtn = self.request('/statuses/home_timeline', {'count': count})
+        return self.json_to_status(rtn)
         
-    def get_replies(self, count):
-        ''' Updating replies '''
-        self.log.debug('Updating replies')
-        rtn = self.http.request('%s/statuses/mentions' % 
-            self.apiurl, {'count': count})
-        return self.response_to_statuses(rtn)
-        
-    def get_directs(self, count):
-        ''' Updating directs '''
-        self.log.debug('Updating directs')
-        rtn = self.http.request('%s/direct_messages' % self.apiurl, 
-            {'count': count / 2})
-        directs = self.response_to_statuses(rtn, type=UPDATE_TYPE_DM)
-        rtn = self.http.request('%s/direct_messages/sent' % self.apiurl, 
-            {'count': count / 2})
-        directs += self.response_to_statuses(rtn, type=UPDATE_TYPE_DM)
-        return directs
-            
-    def get_sent(self, count):
-        ''' Updating my statuses '''
-        self.log.debug('Updating my statuses')
-        rtn = self.http.request('%s/statuses/user_timeline' % self.apiurl, 
-            {'count': count})
-        return self.response_to_statuses(rtn)
-        
-    def get_favorites(self):
-        '''Actualizando favoritos'''
-        self.log.debug('Descargando favoritos')
-        
-        try:
-            rtn = self.http.request('%s/favorites' % self.apiurl)
-            self.favorites = self.response_to_statuses(rtn)
-            return Response(self.favorites, 'status')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
-        
-    def get_rate_limits(self):
-        '''Actualizando llamdas restantes a la api'''
-        try:
-            rtn = self.http.request('%s/account/rate_limit_status' % 
-                self.apiurl)
-            return Response(self.__create_rate(rtn), 'rate')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
-        
-    def get_conversation(self, args):
-        '''Obteniendo conversacion'''
-        id = args['id']
-        conversation = []
-        
-        self.log.debug(u'Obteniendo conversación:')
-        
-        while 1:
-            try:
-                rtn = self.http.request('%s/statuses/show' % self.apiurl, 
-                    {'id': id})
-            except TurpialException, exc:
-                return Response(None, 'error', exc.msg)
-                
-            self.log.debug('--Descargado Tweet: %s' % id)
-            conversation.append(rtn)
-            
-            if rtn['in_reply_to_status_id']:
-                id = str(rtn['in_reply_to_status_id'])
-            else:
-                break
-        
-        return Response(self.response_to_statuses(conversation), 'profile')
-        
-    def get_friends_list(self):
-        '''Descargando lista de amigos'''
-        tries = 0
-        count = 0
-        cursor = -1
-        friends = []
-        
-        self.log.debug('Descargando Lista de Amigos')
-        while 1:
-            try:
-                rtn = self.http.request('%s/statuses/friends' % self.apiurl, 
-                    {'cursor': cursor})
-            except TurpialException, exc:
-                tries += 1
-                if tries < 3:
-                    continue
-                else:
-                    return Response(None, 'error', exc.msg)
-                
-            for user in rtn['users']:
-                friends.append(self.__create_profile(user))
-                count += 1
-            if rtn['next_cursor'] > 0:
-                cursor = rtn['next_cursor']
-                continue
-            else:
-                break
-        
-        self.friends = friends
-        self.log.debug('--Descargados %i amigos' % count)
-        self.friendsloaded = True
-        
-    def update_profile(self, args):
-        '''Actualizando perfil'''
-        self.log.debug('Actualizando perfil')
-        
-        name = args['name']
-        url = args['url']
-        bio = args['bio']
-        location = args['location']
-        
-        try:
-            rtn = self.http.request('%s/account/update_profile' % self.apiurl, 
-                {'name': name, 'url': url, 'location': location, 
-                'description': bio})
-            return Response(self.__create_profile(rtn), 'profile')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
-        
-    def update_status(self, args):
-        '''Actualizando estado'''
-        in_reply_id = args['in_reply_id']
-        text = args['text']
-        
-        if in_reply_id:
-            args = {'status': text, 'in_reply_to_status_id': in_reply_id}
-        else:
-            args = {'status': text}
-        self.log.debug(u'Nuevo tweet: %s' % text)
-        
-        try:
-            rtn = self.http.request('%s/statuses/update' % self.apiurl, args)
-            # Evita que se duplique el último estado del usuario
-            if rtn['id'] != self.profile.last_update_id:
-                status = self.__create_status(rtn)
-                self._add_status(self.timeline, status)
-                self.profile.last_update = rtn['text']
-                self.profile.last_update_id = rtn['id']
-            return Response(self.get_muted_timeline(self.timeline), 'status')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
-        
-    def destroy_status(self, args):
-        '''Destruyendo tweet'''
-        id = args['id']
-        self.log.debug('Destruyendo tweet: %s' % id)
-        
-        try:
-            rtn = self.http.request('%s/statuses/destroy' % self.apiurl,
-                {'id': id})
-            self._destroy_status(str(rtn['id']))
-            return (Response(self.get_muted_timeline(self.timeline), 'status'), 
-                Response(self.favorites, 'status'))
-        except TurpialException, exc:
-            return (Response(None, 'error', exc.msg), 
-                Response(None, 'error', exc.msg))
-        
-    def repeat(self, args):
-        '''Haciendo retweet'''
-        id = args['id']
-        self.log.debug('Retweet: %s' % id)
-        
-        try:
-            rtn = self.http.request('%s/statuses/retweet' % self.apiurl, args)
-            users = self.__get_retweet_users(id)
-            status = self.__create_status(rtn)
-            status.retweet_by = users
-            # FIXME: Modificar también los replies y favoritos
-            self._add_status(self.timeline, status)
-            return Response(self.get_muted_timeline(self.timeline), 'status')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
-        
-    def mark_favorite(self, args):
-        '''Marcando tweet como favorito'''
-        id = args['id']
-        self.log.debug('Marcando tweet como favorito: %s' % id)
-        
-        try:
-            rtn = self.http.request('%s/favorites/create' % self.apiurl, 
-                {'id': id})
-            status = self.__create_status(rtn)
-            self._set_status_favorite(status)
-            return (Response(self.get_muted_timeline(self.timeline), 'status'), 
-                Response(self.replies, 'status'),
-                Response(self.favorites, 'status'))
-        except TurpialException, exc:
-            self.log.debug(exc)
-            return (Response(None, 'error', exc.msg), 
-                Response(None, 'error', exc.msg), 
-                Response(None, 'error', exc.msg))
-        
-    def unmark_favorite(self, args):
-        '''Desmarcando tweet como favorito'''
-        id = args['id']
-        self.log.debug('Desmarcando tweet como favorito: %s' % id)
-        
-        try:
-            rtn = self.http.request('%s/favorites/destroy' % self.apiurl, 
-                {'id': id})
-            status = self.__create_status(rtn)
-            self._unset_status_favorite(status)
-            return (Response(self.get_muted_timeline(self.timeline), 'status'), 
-                Response(self.replies, 'status'),
-                Response(self.favorites, 'status'))
-        except TurpialException, exc:
-            return (Response(None, 'error', exc.msg), 
-                Response(None, 'error', exc.msg), 
-                Response(None, 'error', exc.msg))
-                
-    def follow(self, args):
-        '''Siguiendo a un amigo'''
-        user = args['user']
-        self.log.debug('Siguiendo a: %s' % user)
-        
-        try:
-            rtn = self.http.request('%s/friendships/create' % self.apiurl,
-                {'screen_name': user})
-            user = self.__create_profile(rtn)
-            self._add_friend(user)
-            return Response([self.profile, user, True], 'mixed')
-        except TurpialException, exc:
-            return Response([None, user, True], 'error', exc.msg)
-        
-    def unfollow(self, args):
-        '''Dejando de seguir a un amigo'''
-        user = args['user']
-        self.log.debug('Dejando de seguir a: %s' % user)
-        
-        try:
-            rtn = self.http.request('%s/friendships/destroy' % self.apiurl,
-                {'screen_name': user})
-            user = self.__create_profile(rtn)
-            self._del_friend(user)
-            return Response([self.profile, user, False], 'mixed')
-        except TurpialException, exc:
-            return Response(False, 'error', exc.msg)
-        
-    def send_direct(self, user, text):
-        pass
-        
-    def destroy_direct(self, args):
-        '''Destruyendo tweet directo'''
-        id = args['id']
-        self.log.debug('Destruyendo directo: %s' % id)
-        
-        try:
-            rtn = self.http.request('%s/direct_messages/destroy' % self.apiurl,
-                {'id': id})
-            self._destroy_direct(str(rtn['id']))
-            return Response(self.directs, 'status')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
-        
-    def search(self, args):
-        ''' Buscando en Twitter '''
-        query = args['query']
-        count = args['count']
-        self.log.debug('Buscando tweets: %s' % query)
-        
-        try:
-            rtn = self.http.request('%s/search' % self.apiurl2, 
-                {'q': query, 'rpp': count})
-            return Response(self.response_to_statuses(rtn['results']), 'status')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
-            
-    def get_lists(self):
-        ''' Obteniendo las listas del usuario '''
-        tries = 0
-        count = 0
-        cursor = -1
-        lists = []
-        
-        self.log.debug('Descargando Listas del usuario')
-        # Descargando listas propias
-        while 1:
-            try:
-                rtn = self.http.request('%s/%s/lists' % (self.apiurl, 
-                    self.profile.username), {'cursor': cursor})
-            except TurpialException, exc:
-                tries += 1
-                if tries < 3:
-                    continue
-                else:
-                    return Response(None, 'error', exc.msg)
-                
-            for ls in rtn['lists']:
-                lists.append(self.__create_list(ls))
-                count += 1
-            if rtn['next_cursor'] > 0:
-                cursor = rtn['next_cursor']
-                continue
-            else:
-                break
-        
-        # Descargando listas a las que estás suscrito
-        while 1:
-            try:
-                rtn = self.http.request('%s/%s/lists/subscriptions' % (self.apiurl, 
-                    self.profile.username), {'cursor': cursor})
-            except TurpialException, exc:
-                tries += 1
-                if tries < 3:
-                    continue
-                else:
-                    return Response(None, 'error', exc.msg)
-                
-            for ls in rtn['lists']:
-                lists.append(self.__create_list(ls))
-                count += 1
-            if rtn['next_cursor'] > 0:
-                cursor = rtn['next_cursor']
-                continue
-            else:
-                break
-        
-        self.lists = lists
-        self.log.debug('--Descargadas %i listas' % count)
-        return self.lists
-        
-    def get_list_statuses(self, args):
-        '''Actualizando estados de una lista'''
-        id = args['id']
-        user = args['user']
-        count = args['count']
-        self.log.debug('Descargando lista %s' % id)
-        
-        try:
-            rtn = self.http.request('%s/%s/lists/%s/statuses' % (self.apiurl, 
-                user, id), {'per_page': count})
-            statuses = self.response_to_statuses(rtn)
-            return Response(self.get_muted_timeline(statuses), 'status')
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)
-            
-    def get_profile(self, args):
-        '''Obteniendo perfil'''
-        
-        user = args['user']
-        try:
-            rtn = self.http.request('%s/users/show/%s' % (self.apiurl, user))
-            profile = self.__create_profile(rtn)
-            rtn = self.http.request('%s/statuses/user_timeline' % 
-                self.apiurl, {'screen_name': user})
-            profile.recent_updates = Response(self.response_to_statuses(rtn))
-            rtn = self.http.request(profile.avatar, {}, 'text')
-            fid, path = tempfile.mkstemp(prefix='tmp_avatar')
-            fd = os.fdopen(fid, 'wb')
-            fd.write(rtn)
-            fd.close()
-            profile.tmp_avatar_path = path
-            return Response(profile)
-        except TurpialException, exc:
-            return Response(None, 'error', exc.msg)

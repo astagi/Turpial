@@ -18,9 +18,10 @@ except:
 PROTOCOLS = ['twitter', 'identica']
 
 # Tipos de actualizaciones (tweets/dents)
-UPDATE_TYPE_DM = 'dm'
-UPDATE_TYPE_STD = 'std'
-UPDATE_TYPE_PROFILE = 'profile'
+class UpdateType:
+    DM = 'dm'
+    STD = 'std'
+    PROFILE = 'profile'
 
 GLOBAL_CFG = {
     'App':{

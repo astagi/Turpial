@@ -9,235 +9,27 @@ import time
 import logging
 import datetime
 
-from turpial.api.interfaces.post import Response
+from turpial.api.interfaces.http import TurpialHTTP
+from turpial.api.protocols.twitter.globals import POST_ACTIONS
 
-class Protocol:
-    ''' Clase que define las funciones básicas que debe implementar cualquier
-    protocolo de microblogging para Turpial '''
-    def __init__(self, name, apiurl='', apiurl2='', tags_url=None, 
+class Protocol(TurpialHTTP):
+    ''' Base class to define basic functions that must have any protocol
+    implementation '''
+    def __init__(self, account_id, name, api_url, search_url, tags_url=None, 
         groups_url=None, profiles_url=None):
-        self.timeline = []
-        self.replies = []
-        self.directs = []
-        self.favorites = []
-        self.friends = []
-        self.lists = [] #Posiblemente se use más adelante
-        self.muted_users = []
+        TurpialHTTP.__init__(self, POST_ACTIONS)
         
-        self.apiurl = apiurl
-        self.apiurl2 = apiurl2
-        self.profile = None
-        self.friendsloaded = False
-        
-        self.tags_url = tags_url
-        self.groups_url = groups_url
-        self.profiles_url = profiles_url
-        
-        self.to_fav = []
-        self.to_unfav = []
-        self.to_del = []
+        self.urls['api'] = api_url
+        self.urls['search'] = search_url
+        if tags_url:
+            self.urls['tags'] = tags_url
+        if tags_url:
+            self.urls['groups'] = groups_url
+        if tags_url:
+            self.urls['profiles'] = profiles_url
         
         self.log = logging.getLogger(name)
-        self.log.debug('Iniciado')
-        
-    # ------------------------------------------------------------
-    # Common methods to all protocols
-    # ------------------------------------------------------------
-    
-    # Status related functions
-    # ------------------------------------------------------------
-    def _find_status_by_id(self, from_arr, id):
-        id = str(id)
-        for sta in from_arr:
-            if sta.id == id:
-                return sta
-        return None
-        
-    def _add_status(self, to_arr, status):
-        ''' Agrega un status a cualquiera de los arreglos '''
-        if status is None: 
-            return
-        
-        item = self._find_status_by_id(to_arr, status.id)
-        if item:
-            self.log.debug('--El status %s ya existe. Se edita' % status.id)
-            index = to_arr.index(item)
-            to_arr[index] = status
-        else:
-            self.log.debug('--Agregado status %s' % status.id)
-            to_arr.insert(0, status)
-    
-    def _del_status(self, from_arr, id):
-        ''' Borra un status de cualquiera de los arreglos '''
-        item = self._find_status_by_id(from_arr, id)
-        if item:
-            from_arr.remove(item)
-            self.log.debug('--Removido status %s' % id)
-        else:
-            self.log.debug('--El status %s no existe. No se borra' % id)
-            
-    def _fav_status(self, from_arr, status, fav):
-        ''' Establece como favorito un status de cualquiera de los arreglos '''
-        item = self._find_status_by_id(from_arr, status.id)
-        if item:
-            status.favorite = fav
-            index = from_arr.index(item)
-            from_arr[index] = status
-            self.log.debug('--Cambiado status %s' % status.id)
-        else:
-            self.log.debug('--El status %s no existe. No se cambia' % status.id)
-            
-    # -------------------------------------------------------------
-    
-    def _add_friend(self, user):
-        exist = False
-        for friend in self.friends:
-            if user.username == friend.username:
-                exist = True
-                break
-        
-        if not exist: 
-            self.log.debug('Agregado %s a la lista de amigos' % user.username)
-            self.friends.insert(0, user)
-            self.profile.friends_count += 1
-            
-    def _del_friend(self, id):
-        item = None
-        for friend in self.friends:
-            if id == friend.id:
-                item = friend
-                break
-        if item: 
-            self.log.debug('Removido %s de la lista de amigos' % item.username)
-            self.friends.remove(item)
-            self.profile.friends_count -= 1
-            
-    def _get_single_friends_list(self):
-        ''' Retorna un arreglo simple de nicks de todos los amigos del usuario 
-        o retorna None si aún no se han cargado '''
-        single_list = []
-        if self.friendsloaded:
-            for friend in self.friends:
-                single_list.append(friend.screen_name)
-            return single_list
-        else:
-            return None
-        
-    def _set_status_favorite(self, status):
-        self._add_status(self.favorites, status)
-        self._fav_status(self.timeline, status, True)
-        self._fav_status(self.replies, status, True)
-        try:
-            self.to_fav.remove(status.id)
-            self.log.debug('Marcado status %s como favorito' % status.id)
-        except:
-            self.log.debug('El status %s ha desaparecido' % status.id)
-        
-    def _unset_status_favorite(self, status):
-        self._del_status(self.favorites, status.id)
-        self._fav_status(self.timeline, status, False)
-        self._fav_status(self.replies, status, False)
-        try:
-            self.to_unfav.remove(status.id)
-            self.log.debug('Desmarcado status %s como favorito' % status.id)
-        except:
-            self.log.debug('El status %s ha desaparecido' % status.id)
-        
-    def _destroy_status(self, id):
-        self._del_status(self.timeline, id)
-        self._del_status(self.favorites, id)
-        self.to_del.remove(id)
-        
-    def _destroy_direct(self, id):
-        self._del_status(self.directs, id)
-        self.to_del.remove(id)
-        
-    def _change_api_url(self, new_url):
-        if new_url == '': 
-            return
-        self.log.debug('Cambiada la API URL a %s' % new_url)
-        self.apiurl = new_url
-        
-    def _mute_by_user(self, user):
-        if not self.is_friend(user):
-            self.log.debug('No se silencia a %s porque no es tu amigo' % user)
-            return
-        
-        if self.is_muted(user):
-            self.log.debug('Ya %s esta silenciado. No se hace nada' % user)
-        else:
-            self.log.debug('Silenciando a %s' % user)
-            self.muted_users.append(user)
-        
-    def _unmute_by_user(self, user):
-        if not self.is_friend(user):
-            self.log.debug('No se revela a %s porque no es tu amigo' % user)
-            return
-        
-        if not self.is_muted(user):
-            self.log.debug('Ya %s esta revelado. No se hace nada' % user)
-        else:
-            self.log.debug('Revelando a %s' % user)
-            self.muted_users.remove(user)
-            
-    def _mute_by_list(self, list):
-        self.log.debug('Silenciando por lista')
-        self.muted_users = list
-        
-    def get_muted_friends_list(self):
-        ''' Retorna la lista de nicks silenciados o retorna None si aún no se 
-        ha cargado la lista de amigos'''
-        if self.friendsloaded:
-            return self.muted_users
-        else:
-            return None
-    
-    def get_muted_timeline(self, statuses):
-        timeline = []
-        for tweet in statuses:
-            if not self.is_muted(tweet.username):
-                timeline.append(tweet)
-        
-        return timeline
-            
-    def is_friend(self, user):
-        for friend in self.friends:
-            if friend.username == user:
-                return True
-        return False
-        
-    def is_muted(self, user):
-        return user in self.muted_users
-        
-    def is_favorite(self, id):
-        for sta in self.timeline:
-            if not sta:
-                continue
-            if sta.id == id:
-                return sta.is_favorite
-        for sta in self.replies:
-            if not sta:
-                continue
-            if sta.id == id:
-                return sta.is_favorite
-        for sta in self.favorites:
-            if not sta:
-                continue
-            if sta.id == id:
-                return sta.is_favorite
-        return False
-    
-    def mute(self, args):
-        arg = args['arg']
-        print "protocols.py: ", arg, type(arg).__name__
-        if type(arg).__name__ == 'list':
-            self._mute_by_list(arg)
-        else:
-            self._mute_by_user(arg)
-        
-        return (Response(self.get_muted_timeline(self.timeline), 'status'), 
-                Response(self.get_muted_timeline(self.replies), 'status'),
-                Response(self.get_muted_timeline(self.favorites), 'status'))
+        self.log.debug('Started')
     
     # ------------------------------------------------------------
     # Time related methods. Overwrite if necesary
@@ -285,8 +77,17 @@ class Protocol:
         return time.mktime(t)
     
     # ------------------------------------------------------------
-    # HTTP related methods to be overwritten
+    # Methods to be overwritten
     # ------------------------------------------------------------
+    
+    def json_to_profile(self, response):
+        ''' Returns a Profile object from a JSON response '''
+        raise NotImplementedError
+    
+    def json_to_status(self, response):
+        ''' Returns a Status object from a JSON response '''
+        raise NotImplementedError
+        
     def response_to_statuses(self, response, mute=False):
         ''' Take the server response and transform into an array of Status 
         objects inside a Response object '''
