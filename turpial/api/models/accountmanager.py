@@ -21,12 +21,12 @@ class AccountManager:
     def __iter__(self):
         return self.__accounts.iteritems()
         
-    def register(self, username, protocol_id):
+    def register(self, username, password, protocol_id):
         account_id = "%s-%s" % (username, protocol_id)
         if self.__accounts.has_key(account_id):
             self.log.debug('Account %s is already registered' % account_id)
         else:
-            account = Account(username, account_id, protocol_id)
+            account = Account(username, password, account_id, protocol_id)
             self.__accounts[account_id] = account
         
     def unregister(self, account_id):
@@ -37,3 +37,6 @@ class AccountManager:
             
     def get(self, account_id):
         return self.__accounts[account_id]
+        
+    def list(self):
+        return self.__accounts.iterkeys()
