@@ -11,7 +11,7 @@ from turpial.api.protocols.twitter import twitter
 
 class Account:    
     def __init__(self, username, protocol_id):
-        self._id = "%s-%s" % (username, protocol_id)
+        self.id_ = "%s-%s" % (username, protocol_id)
         if protocol_id == DefProtocols.TWITTER:
             self.protocol = twitter.Main(self._id)
         #elif protocol_id == DefProtocols.IDENTICA:

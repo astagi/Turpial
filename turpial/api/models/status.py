@@ -7,7 +7,7 @@
 
 class Status:
     def __init__(self):
-        self._id = None
+        self.id_ = None
         self.text = None
         self.username = None
         self.avatar = None

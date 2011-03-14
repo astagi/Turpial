@@ -67,7 +67,7 @@ class Main(Protocol):
             return profiles
         else:
             profile = Profile()
-            profile._id = response['id']
+            profile.id_ = response['id']
             profile.fullname = response['name']
             profile.username = response['screen_name']
             profile.avatar = response['profile_image_url']
@@ -132,7 +132,7 @@ class Main(Protocol):
             own = True if (username.lower() == self.uname.lower()) else False
             
             status = Status()
-            status._id = str(tweet['id'])
+            status.id_ = str(tweet['id'])
             status.username = username
             status.avatar = avatar
             status.source = source

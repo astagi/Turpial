@@ -9,7 +9,7 @@ class Profile:
     DEFAULT_LINK_COLOR = '#0F0F85'
     
     def __init__(self):
-        self._id = None
+        self.id_ = None
         self.fullname = None
         self.username = None
         self.avatar = None
