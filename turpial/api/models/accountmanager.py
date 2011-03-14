@@ -18,6 +18,9 @@ class AccountManager:
     def __len__(self):
         return len(self.__accounts)
         
+    def __iter__(self):
+        return self.__accounts.iteritems()
+        
     def register(self, username, protocol_id):
         account_id = "%s-%s" % (username, protocol_id)
         if self.__accounts.has_key(account_id):
