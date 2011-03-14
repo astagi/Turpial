@@ -14,6 +14,8 @@ from turpial.api.common import ColumnType, STATUSPP
 from turpial.api.models.response import Response
 from turpial.api.models.accountmanager import AccountManager
 
+#TODO: Implement basic code to identify generic proxies in ui_base
+
 class Core:
     '''Turpial core'''
     def __init__(self):
