@@ -10,10 +10,10 @@ from turpial.api.models.profile import Profile
 from turpial.api.protocols.twitter import twitter
 
 class Account:    
-    def __init__(self, username, protocol_id):
-        self.id_ = "%s-%s" % (username, protocol_id)
+    def __init__(self, id_, protocol_id):
+        self.id_ = id_
         if protocol_id == DefProtocols.TWITTER:
-            self.protocol = twitter.Main(self._id)
+            self.protocol = twitter.Main(self.id_)
         #elif protocol_id == DefProtocols.IDENTICA:
         #    self.protocol = identica.Main(self._id)
         self.profile = Profile()
