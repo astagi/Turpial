@@ -9,7 +9,7 @@ import os
 import urllib2
 import tempfile
 
-from turpial.config import UpdateType, STATUSPP
+from turpial.api.common import UpdateType, STATUSPP
 from turpial.api.models.status import Status
 from turpial.api.models.profile import Profile
 from turpial.api.protocols.twitter import oauth
@@ -22,7 +22,7 @@ class Main(Protocol):
             'http://api.twitter.com/1', 'http://search.twitter.com', 
             'http://twitter.com/search?q=%23', None, 'http://www.twitter.com')
         
-        self.username = None
+        self.uname = None
         self.token = None
         self.account_id = account_id
         self.auth_args = {}
@@ -129,7 +129,7 @@ class Main(Protocol):
             if tweet.has_key('source'):
                 source = tweet['source']
             
-            own = True if (username.lower() == self.username.lower()) else False
+            own = True if (username.lower() == self.uname.lower()) else False
             
             status = Status()
             status._id = str(tweet['id'])
@@ -155,7 +155,7 @@ class Main(Protocol):
         self.__fetch_xauth_access_token(username, password)
         rtn = self.request('/account/verify_credentials')
         profile = self.json_to_profile(rtn)
-        self.username = profile.username
+        self.uname = profile.username
         return profile
         
     def get_timeline(self, count=STATUSPP):

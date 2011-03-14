@@ -15,15 +15,6 @@ try:
 except:
     XDG_CACHE = False
 
-STATUSPP = 20
-PROTOCOLS = ['twitter', 'identica']
-
-# Tipos de actualizaciones (tweets/dents)
-class UpdateType:
-    DM = 'dm'
-    STD = 'std'
-    PROFILE = 'profile'
-
 GLOBAL_CFG = {
     'App':{
         'version': '1.5.2-a1',
