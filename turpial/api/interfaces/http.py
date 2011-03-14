@@ -105,7 +105,7 @@ class TurpialHTTP:
     
     def request(self, url, args={}, format=DEFAULT_FORMAT):
         request_url = "%s%s" % (self.urls['api'], url)
-        print request_url
+        self.log.debug('Making request to: %s' % request_url)
         httpreq = self.build_http_request(request_url, args, format)
         authreq = self.auth_http_request(httpreq, self.auth_args)
         return self.fetch_http_resource(authreq, format)
