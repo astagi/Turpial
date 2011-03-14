@@ -15,3 +15,10 @@ class UpdateType:
     DM = 'dm'
     STD = 'std'
     PROFILE = 'profile'
+
+class ColumnType:
+    TIMELINE = 'timeline'
+    REPLIES = 'replies'
+    DIRECTS = 'directs'
+    SENT = 'sent'
+    FAVORITES = 'favorites'
